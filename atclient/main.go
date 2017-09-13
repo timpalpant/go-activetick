@@ -54,7 +54,6 @@ func fetchTickData(client *activetick.PagingClient, symbol string, start, end ti
 				record.LastPrice, record.LastSize, record.LastExchange)
 		}
 	}
-
 }
 
 func main() {

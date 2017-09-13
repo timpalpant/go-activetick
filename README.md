@@ -1,9 +1,9 @@
 # go-activetick
 A Go library for accessing the ActiveTick HTTP API.
 
-[![GoDoc](https://godoc.org/github.com/timpalpant/go-activetick?status.svg)](http://godoc.org/github.com/timpalpant/go-iex)
-[![Build Status](https://travis-ci.org/timpalpant/go-activetick.svg?branch=master)](https://travis-ci.org/timpalpant/go-iex)
-[![Coverage Status](https://coveralls.io/repos/timpalpant/go-activetick/badge.svg?branch=master&service=github)](https://coveralls.io/github/timpalpant/go-iex?branch=master)
+[![GoDoc](https://godoc.org/github.com/timpalpant/go-activetick?status.svg)](http://godoc.org/github.com/timpalpant/go-activetick)
+[![Build Status](https://travis-ci.org/timpalpant/go-activetick.svg?branch=master)](https://travis-ci.org/timpalpant/go-activetick)
+[![Coverage Status](https://coveralls.io/repos/timpalpant/go-activetick/badge.svg?branch=master&service=github)](https://coveralls.io/github/timpalpant/go-activetick?branch=master)
 
 go-activetick is a library to access the [ActiveTick](http://www.activetick.com/activetick/contents/PersonalServicesDataAPIOverview.aspx) HTTP API from [Go](http://www.golang.org).
 
@@ -11,88 +11,86 @@ ActiveTick is not affiliated and does not endorse or recommend this library.
 
 ## Usage
 
-### Fetch real-time top-of-book quotes
+### atclient CLI
+
+```
+$ atclient -symbol SPY -begin_time 2016-10-04T14:30:00Z -end_time 2016-10-04T14:40:00Z -type tick
+```
+
+### Fetch historical minute bars
 
 ```Go
 package main
 
 import (
-  "fmt"
-  "net/http"
+    "fmt"
+    "net/http"
+    "time"
 
-  "github.com/timpalpant/go-activetick"
+    "github.com/timpalpant/go-activetick"
 )
 
 func main() {
-  client := activetick.NewClient(&http.Client{})
+    endpoint := "http://localhost:5000"
+    client := activetick.NewPagingClient(activetick.NewClient(&http.Client{}, endpoint))
 
-  for _, quote := range quotes {
-      fmt.Printf("%v: bid $%.02f (%v shares), ask $%.02f (%v shares) [as of %v]\n",
-          quote.Symbol, quote.BidPrice, quote.BidSize,
-          quote.AskPrice, quote.AskSize, quote.LastUpdated)
-  }
+	req := &activetick.BarDataRequest{
+		Symbol:          "SPY",
+		HistoryType:     activetick.HistoryTypeIntraday,
+		IntradayMinutes: 1,
+		BeginTime:       time.Now().Add(-48 * time.Hour),
+		EndTime:         time.Now().Add(-47 * time.Hour),
+	}
+
+	resp, err := client.GetBarData(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, record := range resp.Records {
+		fmt.Printf("%v,%v,%v,%v,%v,%v\n", record.Time, record.Open,
+			record.High, record.Low, record.Close, record.Volume)
+	}
 }
 ```
 
-### Fetch historical top-of-book quote (L1 tick) data.
-
-Historical tick data (TOPS and DEEP) can be parsed using the `PcapScanner`.
+### Fetch historical ticks
 
 ```Go
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
-	"os"
-	"time"
+    "fmt"
+    "net/http"
 
-	"github.com/timpalpant/go-iex"
-	"github.com/timpalpant/go-iex/iextp/tops"
+    "github.com/timpalpant/go-activetick"
 )
 
 func main() {
-	client := iex.NewClient(&http.Client{})
+    endpoint := "http://localhost:5000"
+    client := activetick.NewPagingClient(activetick.NewClient(&http.Client{}, endpoint))
 
-	// Get historical data dumps available for 2016-12-12.
-	histData, err := client.GetHIST(time.Date(2016, time.December, 12, 0, 0, 0, 0, time.UTC))
-	if err != nil {
-		panic(err)
-	} else if len(histData) == 0 {
-		panic(fmt.Errorf("Found %v available data feeds", len(histData)))
+	req := &activetick.TickDataRequest{
+		Symbol:    "SPY",
+		BeginTime: time.Now().Add(-48 * time.Hour),
+		EndTime:   time.Now().Add(-47 * time.Hour),
+		Trades:    true,
+		Quotes:    true,
 	}
 
-	// Fetch the pcap dump for that date and iterate through its messages.
-	resp, err := http.Get(histData[0].Link)
+	resp, err := client.GetTickData(req)
 	if err != nil {
-		panic(err)
-	}
-	defer resp.Body.Close()
-
-	pcapScanner, err := iex.NewPcapScanner(resp.Body)
-	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
-	// Write each quote update message to stdout, in JSON format.
-	enc := json.NewEncoder(os.Stdout)
-
-	for {
-		msg, err := pcapScanner.NextMessage()
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-
-			panic(err)
-		}
-
-		switch msg := msg.(type) {
-		case *tops.QuoteUpdateMessage:
-			enc.Encode(msg)
-		default:
+	for _, record := range resp.Records {
+		if record.Type == activetick.TickTypeQuote {
+			fmt.Printf("%v,%v,%v,%v,%v,%v,%v\n", record.Time,
+				record.BidPrice, record.BidSize, record.BidExchange,
+				record.AskPrice, record.AskSize, record.AskExchange)
+		} else {
+			fmt.Printf("%v,%v,%v,%v\n", record.Time,
+				record.LastPrice, record.LastSize, record.LastExchange)
 		}
 	}
 }
