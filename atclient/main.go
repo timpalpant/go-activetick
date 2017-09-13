@@ -10,7 +10,7 @@ import (
 	"github.com/timpalpant/go-activetick"
 )
 
-func fetchBarData(client *activetick.Client, symbol string, start, end time.Time) {
+func fetchBarData(client *activetick.PagingClient, symbol string, start, end time.Time) {
 	req := &activetick.BarDataRequest{
 		Symbol:          symbol,
 		HistoryType:     activetick.HistoryTypeIntraday,
@@ -30,7 +30,7 @@ func fetchBarData(client *activetick.Client, symbol string, start, end time.Time
 	}
 }
 
-func fetchTickData(client *activetick.Client, symbol string, start, end time.Time) {
+func fetchTickData(client *activetick.PagingClient, symbol string, start, end time.Time) {
 	req := &activetick.TickDataRequest{
 		Symbol:    symbol,
 		BeginTime: start,
@@ -76,7 +76,7 @@ func main() {
 	}
 
 	endpoint := fmt.Sprintf("http://%s:%d", *host, *port)
-	client := activetick.NewClient(&http.Client{}, endpoint)
+	client := activetick.NewPagingClient(activetick.NewClient(&http.Client{}, endpoint))
 
 	switch *dataType {
 	case "bar":
