@@ -1,0 +1,15 @@
+language: go
+go:
+- 1.9
+install:
+- go get golang.org/x/tools/cmd/cover
+- go get github.com/mattn/goveralls
+- go get github.com/modocache/gover
+- go get -t ./...
+script:
+- go test -v -coverprofile=coverage.out
+- gover
+- goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
+env:
+  global:
+    secure: YO2oztIzsCD2+w50JOgaPZFt73LrjyjUcC3YWJ027fsY5C5H5l3jr9Vs4FUFirs+6KV0fQiKcyxo0jM9xF7eUorOzWi+AXvaSOoTQmDBOhus+6bgZY/SLyRpNicyPMJtYF07g7OTkl7iXJ+eVn/rqFhMq+gy+IMyyVaLs2QNhCRn81Wf06txSAHHtNPzGgyKgPwca5JRTu5COijyome4ANA0rbw5xYeU7dKlwcSWF8oFYkxgo5e2JVBxsuArE05FlStrbktEynkSxy3aPTaA0GMFlufAp8SZQpQFYHIn52IFEBTgQ0CeJiSTfM7mpWEpLyShTRjm2o36MRZkVYyTfyq1r7VrBqNTIltGqaPzFQiAocYDkP6BvB8TKRWFs94KS7rLclULO2q/J4oH4/82asG/mcmcSWLTg+87BUZPaigij8/PzodRhcYZSO4gGdn6s1kHSSr75b+lAZ0MKxkLiy6a7NQjZ3WXl//fHOQXFHj3dkIMxnWtUEhhj8T4pGiZeeo6LT73m1zwiRQpSCRVTFS/eassDLvk2rQLi3a6GK40Q7ACf+jr8gW6pCYa3wjS41JzJPElPdk84Zj3LIpTkfk1HA5CMaVkSmfr9/xxEHqycujIezc6iFEbj+Xcb7l3sjsxS4gqowD08/4pwkyxLROdlaqRe9XfuiQpnEIuzYw=
