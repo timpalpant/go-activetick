@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"path"
 	"strconv"
 	"time"
 )
@@ -58,7 +57,8 @@ func (c *Client) GetBarData(req *BarDataRequest) (*BarDataResponse, error) {
 
 func parseBarData(row []string) (*BarDataRecord, error) {
 	if len(row) != 6 {
-		return nil, fmt.Errorf("Expected %d rows, got %d", 6, len(row))
+		return nil, fmt.Errorf("Expected %d rows, got %d: %v",
+			6, len(row), row)
 	}
 
 	t, err := time.Parse(timeFormat, row[0])
@@ -114,10 +114,9 @@ func (c *Client) GetTickData(req *TickDataRequest) (*TickDataResponse, error) {
 		quotesFlag = "1"
 	}
 	values.Set("quotes", quotesFlag)
-	beginMs := int(req.BeginTime.UnixNano() % 1e6 / 1e3)
-	values.Set("beginTime", req.BeginTime.Format(timeFormat)+strconv.Itoa(beginMs))
-	endMs := int(req.EndTime.UnixNano() % 1e6 / 1e3)
-	values.Set("endTime", req.EndTime.Format(timeFormat)+strconv.Itoa(endMs))
+	// NOTE: Milliseconds are not supported as suggested in the documentation.
+	values.Set("beginTime", req.BeginTime.Format(timeFormat))
+	values.Set("endTime", req.EndTime.Format(timeFormat))
 
 	result, err := c.getCSV("/tickData", values)
 	if err != nil {
@@ -142,7 +141,8 @@ func (c *Client) GetTickData(req *TickDataRequest) (*TickDataResponse, error) {
 
 func parseTickData(row []string) (*TickRecord, error) {
 	if len(row) < 9 {
-		return nil, fmt.Errorf("Expected %d rows, got %d", 9, len(row))
+		return nil, fmt.Errorf("Expected %d rows, got %d: %v",
+			9, len(row), row)
 	}
 
 	tickType := TickType(row[0])
@@ -235,7 +235,7 @@ func parseTime(s string) (time.Time, error) {
 }
 
 func (c *Client) getCSV(route string, values url.Values) ([][]string, error) {
-	url := path.Join(c.endpoint, route)
+	url := c.endpoint + route
 	params := values.Encode()
 	if params != "" {
 		url = url + "?" + params
